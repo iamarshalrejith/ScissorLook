@@ -1,13 +1,17 @@
 package com.iamarshalrejith.controller;
 
+import com.iamarshalrejith.domain.BookingStatus;
 import com.iamarshalrejith.mapper.BookingMapper;
 import com.iamarshalrejith.modal.Booking;
+import com.iamarshalrejith.modal.SalonReport;
 import com.iamarshalrejith.payload.dto.*;
 import com.iamarshalrejith.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -55,8 +59,60 @@ public class BookingController {
         return ResponseEntity.ok(getBookingDTOs(bookings));
     }
 
+    @GetMapping("/salon")
+    public ResponseEntity<Set<BookingDTO>> getBookingsBySalon(
+
+    ){
+        List<Booking> bookings = bookingService.getBookingsBySalon(1L);
+        return ResponseEntity.ok(getBookingDTOs(bookings));
+    }
+
+    @GetMapping("/{bookingId}")
+    public ResponseEntity<BookingDTO> getBookingsById(
+        @PathVariable Long bookingId
+    ) throws Exception {
+        Booking booking = bookingService.getBookingById(bookingId);
+        return ResponseEntity.ok(BookingMapper.toDTO(booking));
+    }
+
+    @PutMapping("/{bookingId}/status")
+    public ResponseEntity<BookingDTO> updateBookingStatus(
+            @PathVariable Long bookingId,
+            @RequestParam BookingStatus status
+            ) throws Exception {
+        Booking booking = bookingService.updateBooking(bookingId, status);
+        return ResponseEntity.ok(BookingMapper.toDTO(booking));
+    }
+
+    @GetMapping("/slots/salon/{salonId}")
+    public ResponseEntity<List<BookingSlotDTO>> getBookedSlot(
+            @PathVariable Long salonId,
+            @RequestParam(required = false) LocalDate date
+            ) throws Exception {
+        List<Booking> bookings = bookingService.getBookingsByDate(date,salonId);
+
+        List<BookingSlotDTO> slotsDTOs = bookings.stream().map(booking -> {
+            BookingSlotDTO slotDTO = new BookingSlotDTO();
+            slotDTO.setStartTime(booking.getStartTime());
+            slotDTO.setEndTime(booking.getEndTime());
+            return slotDTO;
+        }).collect(Collectors.toList());
+
+
+        return ResponseEntity.ok(slotsDTOs);
+    }
+
+    @GetMapping("/report")
+    public ResponseEntity<SalonReport> getSalonReport(
+    ) throws Exception {
+        SalonReport report = bookingService.getSalonReport(1L);
+        return ResponseEntity.ok(report);
+    }
+
+
     private Set<BookingDTO> getBookingDTOs(List<Booking> bookings){
         return bookings.stream().map(booking -> {return BookingMapper.toDTO(booking);
         }).collect(Collectors.toSet());
     }
+
 }
