@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,6 +35,8 @@ public class BookingController {
 
         SalonDTO salon = new SalonDTO();
         salon.setId(salonId);
+        salon.setOpenTime(LocalTime.of(9, 0));   // 9:00 AM
+        salon.setCloseTime(LocalTime.of(21, 0)); // 9:00 PM
 
         Set<ServiceDTO> serviceDTOSet = new HashSet<>();
 
