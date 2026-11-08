@@ -1,6 +1,5 @@
 package com.iamarshalrejith.payload.dto;
 
-import com.iamarshalrejith.domain.BookingStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,5 +13,5 @@ public class BookingDTO {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private Set<Long> serviceIds;
-    private BookingStatus status = BookingStatus.PENDING;
+    private int totalPrice;
 }
