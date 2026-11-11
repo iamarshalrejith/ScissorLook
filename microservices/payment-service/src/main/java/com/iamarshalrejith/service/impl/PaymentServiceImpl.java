@@ -8,7 +8,14 @@ import com.iamarshalrejith.payload.response.PaymentLinkResponse;
 import com.iamarshalrejith.repository.PaymentOrderRepository;
 import com.iamarshalrejith.service.PaymentService;
 import com.razorpay.PaymentLink;
+import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
+import com.stripe.Stripe;
+import com.stripe.exception.StripeException;
+import com.stripe.model.checkout.Session;
+import com.stripe.param.checkout.SessionCreateParams;
 import lombok.RequiredArgsConstructor;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -27,7 +34,7 @@ public class PaymentServiceImpl implements PaymentService {
     private String razorpayApiSecret;
 
     @Override
-    public PaymentLinkResponse createOrder(UserDTO user, BookingDTO booking, PaymentMethod paymentMethod) {
+    public PaymentLinkResponse createOrder(UserDTO user, BookingDTO booking, PaymentMethod paymentMethod) throws RazorpayException, StripeException {
         Long amount = (long) booking.getTotalPrice();
 
         PaymentOrder order = new PaymentOrder();
@@ -35,6 +42,7 @@ public class PaymentServiceImpl implements PaymentService {
         order.setPaymentMethod(paymentMethod);
         order.setBookingId(booking.getId());
         order.setSalonId(booking.getSalonId());
+        order.setUserId(user.getId());
         PaymentOrder savedOrder = paymentOrderRepository.save(order);
 
         PaymentLinkResponse paymentLinkResponse = new PaymentLinkResponse();
@@ -71,12 +79,42 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentLink createRazorpayPaymentLink(UserDTO user, Long amount, Long orderId) {
-        return null;
+    public PaymentLink createRazorpayPaymentLink(UserDTO user, Long Amount, Long orderId) throws RazorpayException {
+        Long amount = Amount * 100;
+        RazorpayClient razorpay = new RazorpayClient(razorpayApiKey,razorpayApiSecret);
+
+        JSONObject paymentLinkRequest = new JSONObject();
+        paymentLinkRequest.put("amount",amount);
+        paymentLinkRequest.put("currency","INR");
+
+        JSONObject customer = new JSONObject();
+        customer.put("name",user.getFullName());
+        customer.put("email",user.getEmail());
+
+        paymentLinkRequest.put("customer",customer);
+
+        JSONObject notify = new JSONObject();
+        notify.put("email",true);
+
+        paymentLinkRequest.put("notify",notify);
+
+        paymentLinkRequest.put("reminder_enable",true);
+
+        paymentLinkRequest.put("callback_url", "http://localhost:3000/payment-success/" + orderId);
+        paymentLinkRequest.put("callback_method", "get");
+
+        PaymentLink paymentLink = razorpay.paymentLink.create(paymentLinkRequest);
+
+        return paymentLink;
     }
 
     @Override
-    public String createStripePaymentLink(UserDTO user, Long amount, Long orderId) {
-        return "";
+    public String createStripePaymentLink(UserDTO user, Long amount, Long orderId) throws StripeException {
+        Stripe.apiKey = stripeSecretKey;
+        SessionCreateParams params = SessionCreateParams.builder().addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD).setMode(SessionCreateParams.Mode.PAYMENT).setSuccessUrl("http://localhost:3000/payment-success/"+orderId).setCancelUrl("http://localhost:3000/payment/cancel").addLineItem(SessionCreateParams.LineItem.builder().setQuantity(1L).setPriceData(SessionCreateParams.LineItem.PriceData.builder().setCurrency("usd").setUnitAmount(amount*100).setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder().setName("salon appointment booking").build()).build()).build()).build();
+
+        Session session = Session.create(params);
+
+        return session.getUrl();
     }
 }
